@@ -11,9 +11,7 @@ setup(
     url='https://github.com/wagtail/wagtail-transfer',
     packages=find_packages(exclude=('tests',)),
     include_package_data=True,
-    install_requires=[
-        'wagtail>=4.1'
-    ],
+    install_requires=['wagtail>=4.1'],
     extras_require={
         'docs': [
             'mkdocs>=1.0,<1.1',

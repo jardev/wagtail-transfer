@@ -14,13 +14,16 @@ from wagtail.api import APIField
 from wagtail.models import Page, Site
 from wagtail.snippets.models import SNIPPET_MODELS
 
-from .filters import (ChildOfFilter, DescendantOfFilter, FieldsFilter,
-                      OrderingFilter, SearchFilter)
+from .filters import ChildOfFilter, DescendantOfFilter, FieldsFilter, OrderingFilter, SearchFilter
 from .pagination import ModelPagination, WagtailPagination
-from .serializers import (BaseSerializer, GenericModelSerializer,
-                          PageSerializer, get_serializer_class)
-from .utils import (BadRequestError, filter_page_type, get_object_detail_url,
-                    page_models_from_string, parse_fields_parameter)
+from .serializers import BaseSerializer, GenericModelSerializer, PageSerializer, get_serializer_class
+from .utils import (
+    BadRequestError,
+    filter_page_type,
+    get_object_detail_url,
+    page_models_from_string,
+    parse_fields_parameter,
+)
 
 
 class BaseAPIViewSet(GenericViewSet):
@@ -31,20 +34,20 @@ class BaseAPIViewSet(GenericViewSet):
     filter_backends = []
     model = None  # Set on subclass
 
-    known_query_parameters = frozenset([
-        'limit',
-        'offset',
-        'fields',
-        'order',
-        'search',
-        'search_operator',
-
-        # Used by jQuery for cache-busting. See #1671
-        '_',
-
-        # Required by BrowsableAPIRenderer
-        'format',
-    ])
+    known_query_parameters = frozenset(
+        [
+            'limit',
+            'offset',
+            'fields',
+            'order',
+            'search',
+            'search_operator',
+            # Used by jQuery for cache-busting. See #1671
+            '_',
+            # Required by BrowsableAPIRenderer
+            'format',
+        ]
+    )
     body_fields = ['id']
     meta_fields = ['type', 'detail_url']
     listing_default_fields = ['id', 'type', 'detail_url']
@@ -94,7 +97,11 @@ class BaseAPIViewSet(GenericViewSet):
 
         if url is None:
             # Shouldn't happen unless this endpoint isn't actually installed in the router
-            raise Exception("Cannot generate URL to detail view. Is '{}' installed in the API router?".format(self.__class__.__name__))
+            raise Exception(
+                "Cannot generate URL to detail view. Is '{}' installed in the API router?".format(
+                    self.__class__.__name__
+                )
+            )
 
         return redirect(url)
 
@@ -116,8 +123,7 @@ class BaseAPIViewSet(GenericViewSet):
 
     @classmethod
     def _convert_api_fields(cls, fields):
-        return [field if isinstance(field, APIField) else APIField(field)
-                for field in fields]
+        return [field if isinstance(field, APIField) else APIField(field) for field in fields]
 
     @classmethod
     def get_body_fields(cls, model):
@@ -137,9 +143,11 @@ class BaseAPIViewSet(GenericViewSet):
 
     @classmethod
     def get_field_serializer_overrides(cls, model):
-        return {field.name: field.serializer
-                for field in cls.get_body_fields(model) + cls.get_meta_fields(model)
-                if field.serializer is not None}
+        return {
+            field.name: field.serializer
+            for field in cls.get_body_fields(model) + cls.get_meta_fields(model)
+            if field.serializer is not None
+        }
 
     @classmethod
     def get_available_fields(cls, model, db_fields_only=False):
@@ -186,10 +194,14 @@ class BaseAPIViewSet(GenericViewSet):
         query_parameters = set(self.request.GET.keys())
 
         # All query paramters must be either a database field or an operation
-        allowed_query_parameters = set(self.get_available_fields(queryset.model, db_fields_only=True)).union(self.known_query_parameters)
+        allowed_query_parameters = set(self.get_available_fields(queryset.model, db_fields_only=True)).union(
+            self.known_query_parameters
+        )
         unknown_parameters = query_parameters - allowed_query_parameters
         if unknown_parameters:
-            raise BadRequestError("query parameter is not an operation or a recognised field: %s" % ', '.join(sorted(unknown_parameters)))
+            raise BadRequestError(
+                "query parameter is not an operation or a recognised field: %s" % ', '.join(sorted(unknown_parameters))
+            )
 
     @classmethod
     def _get_serializer_class(cls, router, model, fields_config, show_details=False, nested=False):
@@ -269,7 +281,9 @@ class BaseAPIViewSet(GenericViewSet):
                 child_model = django_field.related_model
                 child_endpoint_class = router.get_model_endpoint(child_model)
                 child_endpoint_class = child_endpoint_class[1] if child_endpoint_class else BaseAPIViewSet
-                child_serializer_classes[field_name] = child_endpoint_class._get_serializer_class(router, child_model, child_sub_fields, nested=True)
+                child_serializer_classes[field_name] = child_endpoint_class._get_serializer_class(
+                    router, child_model, child_sub_fields, nested=True
+                )
 
             else:
                 if field_name in sub_fields:
@@ -279,14 +293,16 @@ class BaseAPIViewSet(GenericViewSet):
         # Reorder fields so it matches the order of all_fields
         fields = [field for field in all_fields if field in fields]
 
-        field_serializer_overrides = {field[0]: field[1] for field in cls.get_field_serializer_overrides(model).items() if field[0] in fields}
+        field_serializer_overrides = {
+            field[0]: field[1] for field in cls.get_field_serializer_overrides(model).items() if field[0] in fields
+        }
         return get_serializer_class(
             model,
             fields,
             meta_fields=meta_fields,
             field_serializer_overrides=field_serializer_overrides,
             child_serializer_classes=child_serializer_classes,
-            base=cls.base_serializer_class
+            base=cls.base_serializer_class,
         )
 
     def get_serializer_class(self):
@@ -314,17 +330,15 @@ class BaseAPIViewSet(GenericViewSet):
         else:
             show_details = True
 
-        return self._get_serializer_class(self.request.wagtailapi_router, model, fields_config, show_details=show_details)
+        return self._get_serializer_class(
+            self.request.wagtailapi_router, model, fields_config, show_details=show_details
+        )
 
     def get_serializer_context(self):
         """
         The serialization context differs between listing and detail views.
         """
-        return {
-            'request': self.request,
-            'view': self,
-            'router': self.request.wagtailapi_router
-        }
+        return {'request': self.request, 'view': self, 'router': self.request.wagtailapi_router}
 
     def get_renderer_context(self):
         context = super().get_renderer_context()
@@ -358,23 +372,19 @@ class BaseAPIViewSet(GenericViewSet):
         else:
             url_name = 'detail'
 
-        return reverse(url_name, args=(pk, ))
+        return reverse(url_name, args=(pk,))
 
 
 class PagesAPIViewSet(BaseAPIViewSet):
     base_serializer_class = PageSerializer
-    filter_backends = [
-        FieldsFilter,
-        ChildOfFilter,
-        DescendantOfFilter,
-        OrderingFilter,
-        SearchFilter
-    ]
-    known_query_parameters = BaseAPIViewSet.known_query_parameters.union([
-        'type',
-        'child_of',
-        'descendant_of',
-    ])
+    filter_backends = [FieldsFilter, ChildOfFilter, DescendantOfFilter, OrderingFilter, SearchFilter]
+    known_query_parameters = BaseAPIViewSet.known_query_parameters.union(
+        [
+            'type',
+            'child_of',
+            'descendant_of',
+        ]
+    )
     body_fields = BaseAPIViewSet.body_fields + [
         'title',
     ]
@@ -487,6 +497,9 @@ class ModelsAPIViewSet(GenericViewSet):
     serializer_class = GenericModelSerializer
     queryset = None
 
+    permission_classes = []
+    authentication_classes = []
+
     def _get_model_list(self, request) -> list:
         """
         Get the original list of models to display.
@@ -496,10 +509,13 @@ class ModelsAPIViewSet(GenericViewSet):
 
         # Loop through the SNIPPET_MODELS and create a list of dicts with the
         # model label and name.
-        return_items = [{
-            'model_label': model._meta.label_lower,
-            'name': model._meta.verbose_name.title(),
-        } for model in SNIPPET_MODELS]
+        return_items = [
+            {
+                'model_label': model._meta.label_lower,
+                'name': model._meta.verbose_name.title(),
+            }
+            for model in SNIPPET_MODELS
+        ]
 
         # Check for a ?search query param.
         query = request.GET.get("search", '')
@@ -511,23 +527,18 @@ class ModelsAPIViewSet(GenericViewSet):
                 # Looks for a text match in the SNIPPET_MODEL['name']
                 if query_lower in obj['name'].lower():
                     return True
+
             return_items = list(filter(filter_model_items, return_items))
 
         return return_items
 
     def listing_view(self, request):
-
         if request.GET.get("model"):
             # If there is a ?model query param, use the detail_view.
             return self.detail_view(request, request.GET.get("model"))
 
         return_items = self._get_model_list(request)
-        data = {
-            'meta': {
-                'total_count': len(return_items)
-            },
-            'items': return_items
-        }
+        data = {'meta': {'total_count': len(return_items)}, 'items': return_items}
         return Response(data)
 
     def detail_view(self, request, model_path):
