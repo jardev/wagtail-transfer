@@ -10,7 +10,7 @@ from treebeard.mp_tree import MP_Node
 from wagtail.models import Page
 
 from .field_adapters import adapter_registry
-from .locators import get_locator_for_model
+from .locators import get_locator_for_model, LOOKUP_FIELDS
 from .models import get_base_model, get_base_model_for_path, get_model_for_path
 
 # Models which should be updated to their latest version when encountered in object references
@@ -216,7 +216,7 @@ class ImportPlanner:
             model = get_base_model_for_path(model_path)
             self.base_import_ids.add((model, source_id))
 
-        # add source id -> uid mappings to the uids_by_source dict, and add objectives 
+        # add source id -> uid mappings to the uids_by_source dict, and add objectives
         # for importing referenced models
         for model_path, source_id, jsonish_uid in data['mappings']:
             model = get_base_model_for_path(model_path)
@@ -274,7 +274,7 @@ class ImportPlanner:
             no_update_objective.must_update = False
             self.objectives.discard(no_update_objective)
             self.unhandled_objectives.discard(no_update_objective)
-        
+
         self.objectives.add(objective)
         self.unhandled_objectives.add(objective)
 
@@ -464,7 +464,7 @@ class ImportPlanner:
         with transaction.atomic():
             for operation in operation_order:
                 operation.run(self.context)
-            
+
             # pages must only have revisions saved after all child objects have been updated, imported, or deleted, otherwise
             # they will capture outdated versions of child objects in the revision
             for operation in operation_order:
@@ -625,11 +625,20 @@ class SaveOperationMixin:
         return get_base_model(self.model)
 
     def _populate_fields(self, context):
+        base_model = get_base_model(self.model)
+        try:
+            fields = LOOKUP_FIELDS[base_model._meta.label_lower]
+        except KeyError:
+            fields = []
+
         for field in self.model._meta.get_fields():
-            try:
-                value = self.object_data['fields'][field.name]
-            except KeyError:
-                continue
+            if field.name in fields and field.primary_key:
+                value = self.object_data['pk']
+            else:
+                try:
+                    value = self.object_data['fields'][field.name]
+                except KeyError:
+                    continue
 
             adapter = adapter_registry.get_field_adapter(field)
 
