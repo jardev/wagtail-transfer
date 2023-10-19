@@ -19,7 +19,7 @@ UUID_SEQUENCE = 0
 # dict of models that should be located by field values using FieldLocator,
 # rather than by UUID mapping
 LOOKUP_FIELDS = {
-    'taggit.tag': ['slug'],  # sensible default for taggit; can still be overridden 
+    'taggit.tag': ['slug'],  # sensible default for taggit; can still be overridden
     'wagtailcore.locale': ["language_code"],
     'contenttypes.contenttype': ['app_label', 'model'],
 }
@@ -122,6 +122,9 @@ class FieldLocator:
         # A UID coming from JSON data will arrive as a list (because JSON has no tuple type),
         # but we need a tuple because the importer logic expects a hashable type that we can use
         # in sets and dict keys
+        if isinstance(json_uid, str):
+            return (json_uid, )
+
         return tuple(json_uid)
 
     def find(self, uid):
