@@ -1,0 +1,62 @@
+version: 2.1
+
+orbs:
+  python: circleci/python@2.1.1
+
+jobs:
+  build-and-test:
+    parameters:
+      wagtail-version:
+        default: "wagtail"
+        type: string
+      python-version:
+        default: "3.10"
+        type: string
+    executor:
+      name: python/default
+      tag: "<< parameters.python-version >>"
+    steps:
+      - checkout
+      - restore_cache:
+          key: pip-{{ .Branch }}-<< parameters.wagtail-version >>-py<< parameters.python-version >>
+      - run: pip install "<< parameters.wagtail-version >>"
+      - run: pip install -e .
+      - save_cache:
+          key: pip-{{ .Branch }}-<< parameters.wagtail-version >>-py<< parameters.python-version >>
+          paths:
+            - "~/.cache/pip"
+      - run:
+          command: ./runtests.py
+          name: Test
+
+  nightly-wagtail-test:
+    executor: python/default
+    steps:
+      - checkout
+      - run: git clone git@github.com:wagtail/wagtail.git
+      - run: pip install -e .
+      - run: pip install ./wagtail
+      - run: ./runtests.py
+      - run:
+          when: on_fail
+          command: python ./.circleci/report_nightly_build_failure.py
+
+workflows:
+  main:
+    jobs:
+      - build-and-test:
+          wagtail-version: "wagtail>=4.1,<4.2"
+          python-version: "3.7"
+      - build-and-test:
+          wagtail-version: "wagtail>=4.2,<4.3"
+          python-version: "3.11"
+  nightly:
+    jobs:
+      - nightly-wagtail-test
+    triggers:
+      - schedule:
+          cron: "0 0 * * *"
+          filters:
+            branches:
+              only:
+                - main

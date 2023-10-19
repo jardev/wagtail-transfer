@@ -1,0 +1,7 @@
+/wagtail_transfer.egg-info
+__pycache__
+/dist
+/build
+/node_modules
+/site
+.DS_Store
